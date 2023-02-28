@@ -111,7 +111,7 @@ router.post('/signup', (req,res)=>{
                             data: result
                         }) Forma antiga*/ 
                         //handle para a verificação de email
-                        //sendVerificationEmail(result, res)
+                        sendVerificationEmail(result, res)
                     })
                     .catch((err)=>{
                         res.json({
@@ -212,6 +212,157 @@ router.post('/signin', (req,res)=>{
     }
 
 })
+
+//Verificar Email
+router.get("/verify/:userId/:uniqueString",(req,res)=>{
+    let {userId, uniqueString} = req.params
+
+    UserVerification.find({userId})
+     .then((result)=>{
+        if(result.length > 0){
+            //Verificação do usuário existe
+            const {expiresAt} = result[0]
+            const hashedUniqueString = result[0].uniqueString
+            
+            //checando se a verificação já expirou
+            if(expiresAt < Date.now()){
+                //Verificação expirada então deletaremos    
+                UserVerification
+                 .deleteOne({ userId})
+                 .then(result =>{
+                    User
+                    .deleteOne({_id: userId})
+                    .then(()=>{
+                        let message = "O link verificação expirou porfavor cadastre-se denovo";
+                        res.redirect(`user/verified/error=true&message=${message}`);
+                    })
+                    .catch(error=>{
+                        let message = "Ocorreu um erro ao deletar o usuário";
+                        res.redirect(`user/verified/error=true&message=${message}`);
+                    })
+                 })
+                 .catch((error)=>{
+                    console.log(error)
+                    let message = "Um erro ocorreu ao checar a existência da verificação do usuário"
+                    res.redirect(`user/verified/error=true&message=${message}`);
+                 })
+            }else{
+                // verificação existe então validaremos o usuário
+                // primeiro comparar a hasher unique string
+                bcrypt.compare(uniqueString, hashedUniqueString)
+                .then(result => {
+                    if(result){
+                        //As strings são iguais
+                        User
+                         .updateOne({_id: userId}, {verified:true})
+                         .then(()=>{
+                            UserVerification
+                             .deleteOne({userId})
+                             .then(()=>{
+                                res.sendFile(path.join(__dirname, "./../views/verified.html"));
+                             })
+                             .catch(error=>{
+                                console.log(error)
+                                let message = "Um erro ocorreu ao finalizar a verificação do usuário";
+                                res.redirect(`user/verified/error=true&message=${message}`);
+                             })
+                         })
+                         .catch(error => {
+                            console.log(error)
+                            let message = "Um erro ocorreu ao atualizar o usuário";
+                            res.redirect(`user/verified/error=true&message=${message}`);
+                         })
+                    }else{
+                        //"" existem mas não são iguais
+                        let message = "Um erro ocorreu ao checar a existência da verificação do usuário"
+                        res.redirect(`user/verified/error=true&message=${message}`);
+                    }
+                })
+                .catch(error=>{
+                    let message = "Detalhes da verificação são incorretas. Cheque seu email."
+                    res.redirect(`user/verified/error=true&message=${message}`); 
+                })
+            }
+
+        }else{
+            //"" não existe
+            let message = "Verificação do usuário não existe ou já foi realizada.Por favor cadastre-se ou logue"
+            res.redirect(`user/verified/error=true&message=${message}`);
+        }
+     })
+     .catch((error)=>{
+        console.log(error);
+        let message = "Um erro ocorreu ao checar a existência da verificação do usuário"
+        res.redirect(`user/verified/error=true&message=${message}`);
+     })
+})
+
+const sendVerificationEmail = ({_id,email}, res)=>{//Desconstruindo a requisição em no id e email
+    //url que será usada no email
+    const currentUrl = "http://localhost:5000/"
+
+    const uniqueString = uuidv4() + _id;
+
+    // config do email
+    const mailOptions = {
+        from: "henriquecaeiro.dev@gmail.com",
+        to: email,
+        subject:"Verifique seu Email",
+        html:`<p>Verifique seu email para completar o cadastro e logar na sua conta</p>
+        <p>Este link <b>expira em 6 horas</b>.</p>
+        <p>Aperte <a href=${currentUrl + "user/verify/" + _id + "/" + uniqueString }>Aqui</a>
+        para proceder.</p>`
+    }
+
+    //Adicionando hash para a string única
+    const saltRounds = 10;
+    bcrypt
+    .hash(uniqueString,saltRounds)
+    .then((hashedUniqueString)=>{
+        // salvar os valores na coleção userVerification
+        const newVerification = new UserVerification({
+            userId: _id,
+            uniqueString: hashedUniqueString,
+            createdAt: Date.now(),
+            expiresAt: Date.now() + 21600000
+        })
+
+        newVerification
+        .save()
+        .then(()=>{
+            transporter
+             .sendMail(mailOptions)
+             .then(()=>{
+                //email enviado e verificação salva
+                res.json({
+                    status:"PEDING",
+                    message: "Verificação de email enviada"
+                })
+             })
+             .catch((error)=>{
+                console.log(error)
+                res.json({
+                    status:"FAILED",
+                    message: "Verificação do email falhou"
+                })
+             })
+        })
+        .catch((error)=>{
+            console.log(error)
+            res.json({
+                status:"FAILED",
+                message: "Erro ao salvar o email"
+            })
+        })
+    })
+    .catch(()=>{
+        res.json({
+            status:"FAILED",
+            message: "Ocorreu um erro ao adicionar um hash ao email"
+        })
+    })
+
+}
 
 
 module.exports = router;
