@@ -7,6 +7,9 @@ const User = require("./../models/User")
 //Model do verificação de email
 const UserVerification = require('./../models/UserVerification')
 
+//Model do reset da senha 
+const PasswordReset = require('./../models/PasswordReset')
+
 // handler da verificação de email
 const nodemailer = require('nodemailer')
 
@@ -378,6 +381,129 @@ router.post('/signin', (req,res)=>{
 
 
 })
+
+//Rota da requisição do resete da senha
+router.post("/requestPasswordReset", (req,res)=>{
+    const {email, redirectUrl} = req.body;
+
+    //checando se o email existe
+    User
+    .find({email})
+    .then((data) => {
+
+        if(data.length){
+            //usuário existe
+            
+            //checando se o email foi verificado
+            if(!data[0].verified){
+                res.json({
+                    status:"FAILED",
+                    message: "O email não foi verificado ainda. Cheque sua caixa de email"
+                })
+            }else{
+                //Enviando o email para resetar a senha
+                sendResetEmail(data[0], redirectUrl, res)
+            }
+
+        }else{
+            res.json({
+                status:"FAILED",
+                message: "Nenhum email encontrado"
+            })
+        }
+
+    })
+    .catch(error => {
+        console.log(error);
+        res.json({
+            status:"FAILED",
+            message: "Um erro ocorreu ao checar se o usuário existe"
+        })
+    })
+
+})
+
+//Mandando email de reset da senha
+const sendResetEmail = ({_id, email}, redirectUrl, res) => {
+    const resetString = uuidv4() + _id;
+
+    //Primeiro deletaremos todos os pedidos de reset anteriores
+    PasswordReset
+    .deleteMany({ userId: _id })
+    .then(result => {
+        //Pedidos anteriores deletados
+        //Agora enviaremos o email
+        const mailOptions = {
+            from: "henriquecaeiro.dev@gmail.com",
+            to: email,
+            subject:"Reset da senha",
+            html:`<p>Verificamos que você esqueceu sua senha</p>
+            <p>Não se preocupe, use este link para resetar sua senha</p>
+            <p>Este link <b>expira em 1 hora</b>.</p>
+            <p>Aperte <a href=${redirectUrl + "/" + _id + "/" + resetString }>Aqui</a>
+            para proceder.</p>`
+        }
+    
+        //aplicando hash na senha
+        const saltRounds = 10;
+        bcrypt
+         .hash(resetString, saltRounds)
+         .then(hashedResetString => {
+            //salvando os valores na collection 
+            const newPasswordReset = new PasswordReset({
+                userId: _id,
+                resetString: hashedResetString,
+                createdAt:  Date.now(),
+                expiresAt: Date.now() + 3600000
+            })
+
+            newPasswordReset
+             .save()
+             .then(()=>{
+                transporter
+                 .sendMail(mailOptions)
+                 .then(()=>{
+                    //email de reset enviado 
+                    res.json({
+                        status:"PEDDING",
+                        message: "Pedido de reset enviado"
+                    })
+                 })
+                 .catch(error=>{
+                    console.log(error)
+                    res.json({
+                        status:"FAILED",
+                        message: "Um erro ocorreu ao enviar o email de reset"
+                    })
+                 })
+             })
+             .catch(error => {
+                console.log(error);
+                res.json({
+                    status:"FAILED",
+                    message: "Um erro ocorreu ao salvar o reset da senha"
+                })
+             })
+         })
+         .catch(error=>{
+            console.log(error);
+            res.json({
+                status:"FAILED",
+                message: "Um erro ocorreu ao aplicar hash na senha"
+            })
+         })
+
+
+    })
+    .catch(error=>{
+        console.log(error);
+        res.json({
+            status:"FAILED",
+            message: "Um erro ocorreu ao limpar os requests de reset de senha"
+        })
+    })
+    
+}
 
 
 module.exports = router;
