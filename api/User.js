@@ -142,6 +142,27 @@ router.post('/signin', (req,res)=>{
                 //Usuário existe
 
                 const hashedPassword = data[0].password;
+                bcrypt.compare(password,hashedPassword).then(result=>{
+                    if(result){
+                        //senha correta
+                        res.json({
+                            status:"SUCCESS",
+                            message: "Logado com sucesso",
+                            data: data
+                        })
+                    }else{
+                        //"" incorreta
+                        res.json({
+                            status:"FAILED",
+                            message: "Senha incorreta"
+                        })
+                    }
+                }).catch(err=>{
+                    res.json({
+                        status:"FAILED",
+                        message: "Um erro ocorreu ao comparar as senhas"
+                    })
+                })
        
                 
             }else{
