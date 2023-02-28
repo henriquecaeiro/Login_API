@@ -5,6 +5,10 @@ require('./config/db')
 const app = require('express')()
 const port = process.env.PORT || 5000
 
+//cors
+const cors = require('cors')
+app.use(cors())
+
 // chamando as rotas da api
 const UserRouter = require('./api/User')
 

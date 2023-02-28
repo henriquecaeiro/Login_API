@@ -4,16 +4,43 @@ const router = express.Router()
 //Model do User
 const User = require("./../models/User")
 
+//Model da verificação de email
+const UserVerification = require('./../models/UserVerification')
+
 // variáveis de ambiente
 require('dotenv').config()
 
 //handler para a senha
 const bcrypt = require('bcrypt')
 
+// handler da verificação de email
+const nodemailer = require('nodemailer')
+
+//geração de string única
+const {v4: uuidv4} = require('uuid')
 
 //handler para a data
 const convertDate = require('../handlers/convertDate')
 const e = require('express')
+
+// configuração do nodemailer
+let transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+        user: process.env.AUTH_EMAIL,
+        pass:  process.env.AUTH_PASSWORD
+    }
+})
+
+//testando a config
+transporter.verify((error, success) => {
+    if(error){
+        console.log(error)
+    }else{
+        console.log("Config correta");
+        console.log(success);
+    }
+})
 
 //Cadastrar
 router.post('/signup', (req,res)=>{
@@ -78,11 +105,11 @@ router.post('/signup', (req,res)=>{
 
                     // tentando salvar novo usuário e retornando resposta
                     newUser.save().then((result)=>{
-                        res.json({
+                        /* res.json({
                             status: "SUCCESS",
                             message: "Cadastro realizado com sucesso",
                             data: result
-                        })
+                        }) Forma antiga*/ 
                         //handle para a verificação de email
                         //sendVerificationEmail(result, res)
                     })
