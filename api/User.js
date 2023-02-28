@@ -423,6 +423,121 @@ router.post("/requestPasswordReset", (req,res)=>{
 
 })
 
+//Rota de reset da senha
+router.post("/resetPassword",(req,res)=>{
+    let {userId,resetString,newPassword} = req.body
+
+    PasswordReset
+     .find({userId})
+     .then(result => {
+        if(result.length > 0){
+            //Request de reset encontrado então procederemos   
+
+            const {expiresAt} = result[0]
+            const hashedResetString = result[0].resetString
+
+            //Verificando se o link não está expirado
+            if(expiresAt < Date.now()){
+                PasswordReset
+                 .deleteOne({userId})
+                 .then(()=>{
+                    // Request de reset deletado
+                    res.json({
+                        status:"FAILED",
+                        message: "Link do reset está expirado"
+                    })
+                 })
+                 .catch(error => {
+                    res.json({
+                        status:"FAILED",
+                        message: "Erro ao deletar o request"
+                    })
+                 })
+            }else{
+                //Request válido então validaremos a string
+                //Primeiro compararemos as string
+                bcrypt
+                .compare(resetString, hashedResetString)
+                .then((result)=>{
+                    if(result){
+                        //strings são iguais
+                        //aplicando hash denovo
+                        
+                        const saltRounds = 10
+                        bcrypt.hash(newPassword, saltRounds)
+                        .then(hashedNewPassword=>{
+                            // Atualizando a senha do usuário 
+                            User
+                            .updateOne({_id: userId}, {password: hashedNewPassword})
+                            .then(()=>{
+                                //Atualização completa. Agora deletaremos o request do reset
+                                PasswordReset.deleteOne({userId})
+                                .then(()=>{
+                                    //Tanto o reset quanto o exclusão realizada com sucesso
+                                    res.json({
+                                        status:"SUCCESS",
+                                        message: "A senha foi atualizada com sucesso."
+                                    })
+                                })
+                                .catch(error=>{
+                                    res.json({
+                                        status:"FAILED",
+                                        message: "Ocorreu um erro ao finalizar o reset da senha."
+                                    })
+                                })
+                            })
+                            .catch(error =>{
+                                console.log(error);
+                                res.json({
+                                    status:"FAILED",
+                                    message: "Ocorreu um erro ao salvar a nova senha do usuário"
+                                })
+                            })
+                        })
+                        .catch(error => {
+                            res.json({
+                                status:"FAILED",
+                                message: "Ocorreu um erro ao aplicar o hash na nova senha"
+                            })
+                        })
+                        
+                    }else{
+                        //A string passada está incorreta
+                        //console.log(result)
+                        res.json({
+                            status:"FAILED",
+                            message: "Request de reset foi passado incorretamente"
+                        })
+                    }
+                })
+                .catch(error => {
+                    console.log(error);
+                    res.json({
+                        status:"FAILED",
+                        message: "Erro ao comparar as strings"
+                    })
+                })
+            }
+
+        }else{
+            //Request do reset não existe
+            res.json({
+                status:"FAILED",
+                message: "Request de reset não encontrado"
+            })
+        }
+     })
+     .catch(error => {
+        console.log(error)
+        res.json({
+            status:"FAILED",
+            message: "Um erro ocorreu ao procurar o request de reset de senha"
+        })
+     })
+    
+
+})
+
 //Mandando email de reset da senha
 const sendResetEmail = ({_id, email}, redirectUrl, res) => {
     const resetString = uuidv4() + _id;
