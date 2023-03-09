@@ -154,7 +154,7 @@ router.post('/signup', (req,res)=>{
 //Mandar email de verificação
 const sendVerificationEmail = ({_id,email}, res)=>{//Desconstruindo a requisição em no id e email
     //url que será usada no email
-    const currentUrl = "https://login-api-2aud.onrender.com"
+    const currentUrl = "https://login-api-2aud.onrender.com/"
 
     const uniqueString = uuidv4() + _id;
 
