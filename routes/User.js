@@ -2,13 +2,13 @@ const express = require('express')
 const router = express.Router()
 
 //Model do User
-const User = require("./../models/User")
+const User = require("../models/User")
 
 //Model do verificação de email
-const UserVerification = require('./../models/UserVerification')
+const UserVerification = require('../models/UserVerification')
 
 //Model do reset da senha 
-const PasswordReset = require('./../models/PasswordReset')
+const PasswordReset = require('../models/PasswordReset')
 
 // handler da verificação de email
 const nodemailer = require('nodemailer')
