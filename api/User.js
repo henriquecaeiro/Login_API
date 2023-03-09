@@ -372,7 +372,8 @@ router.post('/signin', (req,res)=>{
         .catch((err)=>{
             res.json({
                 status:"FAILED",
-                message: "Um erro ocorreu ao checar se o usuário existe"
+                message: "Um erro ocorreu ao checar se o usuário existe",
+                error: err
             })
         })
  
