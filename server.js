@@ -1,5 +1,5 @@
 //mongodb
-require('../config/db')
+require('./config/db')
 
 // criando as variáveis que serão usadas no arquivo
 const app = require('express')()
@@ -10,7 +10,7 @@ const cors = require('cors')
 app.use(cors())
 
 // chamando as rotas da api
-const UserRouter = require('../routes/User')
+const UserRouter = require('./api/User')
 
 // criando variável para aceitar o post dos formulários
 const bodyParser = require('express').json;
