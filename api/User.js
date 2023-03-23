@@ -405,7 +405,7 @@ router.post("/requestPasswordReset", (req,res)=>{
                 //Enviando o email para resetar a senha
                 res.json({
                     status:"PEDING",
-                    message: "O email foi enviado. Cheque sua caixa de email"
+                    message: "O email foi enviado. Cheque sua caixa de email."
                 })
                 sendResetEmail(data[0], redirectUrl, res)
             }
