@@ -1,15 +1,14 @@
-//Arquivo de autenticação jwt
+//Pacotes de autenticação jwt
 const jwt = require('jsonwebtoken');
-const bcrypt = require('bcrypt');
+
+
+//Handler de verificação de email
+const sendVerificationEmail = require("./sendVerificationEmail")
 
 
 
 
 const createUserToken = async(user,req,res)=>{
-
-    //Aplicando hash no jwt para deixar a autencação mais segura
-/*     const saltRounds = 5
-    let secret = bcrypt.hash("secret",saltRounds) */
 
 
     const token = jwt.sign({
@@ -18,12 +17,25 @@ const createUserToken = async(user,req,res)=>{
     },`secret`)
 
     //retornando token
-    res.status(200).json({
-        status: "SUCCESS",
-        message: "Usuário autenticado com sucesso",
-        token: token,
-        userId: user._id
-    })
+    if(!user.verified){
+        sendVerificationEmail(user,res)
+        return res.status(200).json({
+            status: "PENDING",
+            message: "Usuário autenticado com sucesso,agora verifique seu email",
+            token: token,
+            userId: user._id
+        }) 
+    }else{
+        res.status(200).json({
+            status: "SUCCESS",
+            message: "Usuário autenticado com sucesso",
+            token: token,
+            userId: user._id
+        })
+    }
+
+
+
 
 }
 

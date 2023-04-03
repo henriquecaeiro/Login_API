@@ -56,7 +56,7 @@ const e = require('express')
 
 
 //Cadastrar
-router.post('/signup', (req,res)=>{
+router.post('/signup', async(req,res)=>{
 
     // pegando as variáveis do corpo do sitema
     let {name, email, password, dateOfBirth} = req.body 
@@ -69,44 +69,49 @@ router.post('/signup', (req,res)=>{
 
     // verificando se algum campo está em branco e se sim retorna uma reposta em json
     if(name == "" || email == "" || password == "" || dateOfBirth == "") {
-        res.json({
+        res.status(422).json({
             status: "FAILED",
             message: "Um mais campos vazios"
         })
+        return
     }else if(!/^[a-zA-Z ]*$/.test(name)){ //expressão regular para checar se é um nome válido
-        res.json({
+        res.status(422).json({
             status:"FAILED",
             message: "Nome inválido"
         })
+        return
     }else if(!/^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/.test(email)){ //expressão regular para checar se é um email válido
-        res.json({
+        res.status(422).json({
             status:"FAILED",
             message: "Email inválido"
         })
+        return
     }else if(!new Date(convertDate(dateOfBirth)).getTime()){ // verificando de a data está no formata correto (BR)
-        res.json({
+        res.status(422).json({
             status:"FAILED",
             message: "Data de nascimento inválida"
         })
+        return
     }else if(password.length < 8){
-        res.json({
+        res.status(422).json({
             status:"FAILED",
             message: "Senha muito pequena"
         })
+        return
     }else{
-        // Checando se o usuário já existe
-        User.find({email}).then((result) => {
-            // Se já existir um usuário
-            if(result.length){  
-                res.json({
-                    status:"FAILED",
-                    message: "Já existe um usuário com este email"
-                })
-            }else{
-                //tenta criar um usuário
 
-                //handler da senha
-                const saltRounds = 10;
+        //Verificando se o user já existe
+
+        
+       await User.find({email}).then(async(result)=>{
+
+        if(result.length){
+            res.status(422).json({ 
+                status: "FAILED",
+                message: 'Por favor, utilize outro e-mail!' 
+            })
+        }else{
+            const saltRounds = 10;
                 bcrypt.hash(password, saltRounds).then((hashedPassword)=>{ //Dando certo prossegue para a criação do usuário
                     const newUser = new User({
                         name,
@@ -117,9 +122,8 @@ router.post('/signup', (req,res)=>{
                     })
 
                     // tentando salvar novo usuário e retornando resposta
-                    newUser.save().then((result)=>{
-                        //handle para a verificação de email
-                        sendVerificationEmail(result, res)
+                    newUser.save().then(async(result)=>{
+                        await createUserToken(result,req,res)
                     })
                     .catch((err)=>{
                         res.json({
@@ -135,26 +139,20 @@ router.post('/signup', (req,res)=>{
                     })
                 })
 
-
-            }
-
-        }).catch((err)=>{
-            // tratamento de erros
-            console.log(err)
-            res.json({
-                status:"FAILED",
-                message: "Ocorreu um erro ao checar se existia se havia um usuário existente"
-            })
+        }
+       }).catch((err)=>{
+        res.status(500).json({ 
+            status: "FAILED",
+            message: `Catch de fora ${err}` 
         })
-
-
+       })
     }
 
 
 })
 
 //Mandar email de verificação
-const sendVerificationEmail = ({_id,email}, res)=>{//Desconstruindo a requisição em no id e email
+/* const sendVerificationEmail = ({_id,email}, res)=>{//Desconstruindo a requisição em no id e email
     //url que será usada no email
     const currentUrl = "http://localhost:5000/"
 
@@ -219,7 +217,7 @@ const sendVerificationEmail = ({_id,email}, res)=>{//Desconstruindo a requisiç�
         })
     })
 
-}
+} */
 
 //Verificar Email
 router.get("/verify/:userId/:uniqueString",async(req,res)=>{
@@ -267,10 +265,8 @@ router.get("/verify/:userId/:uniqueString",async(req,res)=>{
                             UserVerification
                              .deleteOne({userId})
                              .then(async()=>{
-                                res.sendFile(path.join(__dirname, "./../views/verified.html"));
                                 //autenticando usuário
-                                let user =  User.find({userId})
-                                await createUserToken(user, req, res)
+                                res.sendFile(path.join(__dirname, "./../views/verified.html"));
                              })
                              .catch(error=>{
                                 console.log(error)
@@ -316,62 +312,76 @@ router.get("/verified",async(req,res)=>{
 })
 
 //Logar
-router.post('/signin', async(req,res)=>{
+router.post('/signin', (req,res)=>{
     // pegando e tratando a variáveis que serão usadas
     let {email, password} = req.body
-
+    
     email = email.trim()
     password = password.trim()
 
-    if (!email) {
-        res.status(422).json({ 
+    if(email == "" || password == ""){// checando se os campos estão vazios
+        res.json({
             status:"FAILED",
-            message: 'O e-mail é obrigatório!' 
+            message: "Campos vazios"
         })
-        return
-    }
-    if (!password) {
-        res.status(422).json({ 
-            status:"FAILED",
-            message: 'A senha é obrigatória!' 
+    }else{
+        // checar se o usuário existe
+        User.find({email})
+        .then((data)=>{
+
+            if(data.length){
+                //Usuário existe
+
+                //Checar se o usuário está verificado
+                if(!data[0].verified){
+                    res.json({
+                        status:"FAILED",
+                        message: "Usuário não verificado ainda. cheque seu email."
+                    })
+                }else{
+                    const hashedPassword = data[0].password;
+                    bcrypt.compare(password,hashedPassword).then(async(result)=>{
+                        if(result){
+                            //senha correta
+                            let newData = data[0]
+                            await createUserToken(newData,req,res)
+                        }else{
+                            //"" incorreta
+                            res.json({
+                                status:"FAILED",
+                                message: "Senha incorreta"
+                            })
+                        }
+                    }).catch(err=>{
+                        res.json({
+                            status:"FAILED",
+                            message: "Um erro ocorreu ao comparar as senhas"
+                        })
+                    })
+                }
+                
+            }else{
+                //"" não existe
+                res.json({
+                    status:"FAILED",
+                    message: "Credenciais inválidas"
+                })
+            }
+
         })
-        return
-    }
-
-    const user = await User.findOne({ email: email })
-
-        
-    if (!user) {
-        res.status(422).json({ 
-            status:"FAILED",
-            message: 'Não  há usuários cadastrados com esse e-mail!' 
+        .catch((err)=>{
+            res.json({
+                status:"FAILED",
+                message: "Um erro ocorreu ao checar se o usuário existe",
+                error: err
+            })
         })
-        return
+ 
+
     }
 
-    if (!user.verified){
-        res.status(422).json({ 
-            status:"FAILED",
-            message: 'Usuário não verificado ainda. cheque seu email.' 
-        })
-    }
-
-    const hashedPassword = user.password
-
-    const checkPassword = await bcrypt.compare(password,hashedPassword)
-
-    if(!checkPassword){
-        res.status(422).json({ 
-            status:"FAILED",
-            message: 'senha inválida' 
-        })
-        return
-    }
-
-    await createUserToken(user, req, res)
 
 })
-
 //Rota da requisição do resete da senha
 router.post("/requestPasswordReset", (req,res)=>{
     const {email, redirectUrl} = req.body;
