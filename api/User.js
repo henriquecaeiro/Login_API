@@ -13,6 +13,9 @@ const PasswordReset = require('../models/PasswordReset')
 //handler de autenticação jwt
 const createUserToken = require('../handlers/createUserToken')
 
+//Pacotes de autenticação jwt
+const jwt = require('jsonwebtoken');
+
 //handler que pega o token
 const getToken = require('../handlers/getToken.js')
 
@@ -150,74 +153,6 @@ router.post('/signup', async(req,res)=>{
 
 
 })
-
-//Mandar email de verificação
-/* const sendVerificationEmail = ({_id,email}, res)=>{//Desconstruindo a requisição em no id e email
-    //url que será usada no email
-    const currentUrl = "http://localhost:5000/"
-
-    const uniqueString = uuidv4() + _id;
-
-    // config do email
-    const mailOptions = {
-        from: "henriquecaeiro.dev@gmail.com",
-        to: email,
-        subject:"Verifique seu Email",
-        html:`<p>Verifique seu email para completar o cadastro e logar na sua conta</p>
-        <p>Este link <b>expira em 6 horas</b>.</p>
-        <p>Aperte <a href=${currentUrl + "user/verify/" + _id + "/" + uniqueString }>Aqui</a>
-        para proceder.</p>`
-    }
-
-    //Adicionando hash para a string única
-    const saltRounds = 10;
-    bcrypt
-    .hash(uniqueString,saltRounds)
-    .then((hashedUniqueString)=>{
-        // salvar os valores na coleção userVerification
-        const newVerification = new UserVerification({
-            userId: _id,
-            uniqueString: hashedUniqueString,
-            createdAt: Date.now(),
-            expiresAt: Date.now() + 21600000
-        })
-
-        newVerification
-        .save()
-        .then(()=>{
-            transporter
-             .sendMail(mailOptions)
-             .then(()=>{
-                //email enviado e verificação salva
-                res.json({
-                    status:"PEDING",
-                    message: "Verificação de email enviada"
-                })
-             })
-             .catch((error)=>{
-                console.log(error)
-                res.json({
-                    status:"FAILED",
-                    message: "Verificação do email falhou"
-                })
-             })
-        })
-        .catch((error)=>{
-            console.log(error)
-            res.json({
-                status:"FAILED",
-                message: "Erro ao salvar o email"
-            })
-        })
-    })
-    .catch(()=>{
-        res.json({
-            status:"FAILED",
-            message: "Ocorreu um erro ao adicionar um hash ao email"
-        })
-    })
-
-} */
 
 //Verificar Email
 router.get("/verify/:userId/:uniqueString",async(req,res)=>{
@@ -545,19 +480,23 @@ router.post("/resetPassword",(req,res)=>{
 //Checando usuário pelo token
 router.get("/checkUser",async(req,res)=>{
     
-    let currentUser
+    let currentUser;
 
-    if(req.headers["authorization"]){
+
+    if(req.headers.authorization){// checando se existe autenticação
         const token = getToken(req)
-        const decoded = jwt.verify(token,"secret")
+        const decoded = jwt.verify(token, 'nossosecret')
+
+/*         
+
+        currentUser = await User.findById(decoded.id)
+
+        currentUser.password = undefined  */   
     }else{
-        currentUser = null
+        currentUser = null;
     }
 
-    res.status(200).send(currentUser)
-
-    console.log(currentUser);
-
+    res.status(200).send(currentUser);
 })
 
 //Mandando email de reset da senha

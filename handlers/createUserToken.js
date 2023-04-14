@@ -11,27 +11,29 @@ const sendVerificationEmail = require("./sendVerificationEmail")
 const createUserToken = async(user,req,res)=>{
 
 
-    const token = jwt.sign({
-        name: user.name,
-        id:user._id
-    },`secret`)
+    const token = jwt.sign(
+        {
+          name: user.name,
+          id: user._id,
+        },
+        "nossosecret"
+      );
+    
 
     //retornando token
-    if(!user.verified){
+    if(!user.verified){// se o usuário não estiver com email autenticado, emite aviso.
         sendVerificationEmail(user,res)
         return res.status(200).json({
             status: "PENDING",
-            message: "Usuário autenticado com sucesso,agora verifique seu email",
-            token: token,
-            userId: user._id
+            message: "Verifique seu email.",
         }) 
-    }else{
+    }else{// se estiver, libera a autenticação
         res.status(200).json({
             status: "SUCCESS",
-            message: "Usuário autenticado com sucesso",
+            message: "Você está autenticado!",
             token: token,
-            userId: user._id
-        })
+            userId: user._id,
+          })
     }
 
 
