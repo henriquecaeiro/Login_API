@@ -17,7 +17,7 @@ let transporter = nodemailer.createTransport({
 //Mandar email de verificação
 const sendVerificationEmail = ({_id,email}, res)=>{//Desconstruindo a requisição em no id e email
     //url que será usada no email
-    const currentUrl = "http://localhost:5000/"
+    const currentUrl = "https://login-api-2aud.onrender.com/"
 
     const uniqueString = uuidv4() + _id;
 
