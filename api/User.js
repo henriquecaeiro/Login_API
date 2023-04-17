@@ -255,7 +255,7 @@ router.post('/signin', (req,res)=>{
     password = password.trim()
 
     if(email == "" || password == ""){// checando se os campos estão vazios
-        res.json({
+        res.status(422).json({
             status:"FAILED",
             message: "Campos vazios"
         })
@@ -269,7 +269,7 @@ router.post('/signin', (req,res)=>{
 
                 //Checar se o usuário está verificado
                 if(!data[0].verified){
-                    res.json({
+                    res.status(422).json({
                         status:"FAILED",
                         message: "Usuário não verificado ainda. cheque seu email."
                     })
@@ -282,13 +282,13 @@ router.post('/signin', (req,res)=>{
                             await createUserToken(newData,req,res)
                         }else{
                             //"" incorreta
-                            res.json({
+                            res.status(422).json({
                                 status:"FAILED",
                                 message: "Senha incorreta"
                             })
                         }
                     }).catch(err=>{
-                        res.json({
+                        res.status(502).json({
                             status:"FAILED",
                             message: "Um erro ocorreu ao comparar as senhas"
                         })
@@ -297,7 +297,7 @@ router.post('/signin', (req,res)=>{
                 
             }else{
                 //"" não existe
-                res.json({
+                res.status(422).json({
                     status:"FAILED",
                     message: "Credenciais inválidas"
                 })
@@ -305,7 +305,7 @@ router.post('/signin', (req,res)=>{
 
         })
         .catch((err)=>{
-            res.json({
+            res.status(502).json({
                 status:"FAILED",
                 message: "Um erro ocorreu ao checar se o usuário existe",
                 error: err
@@ -331,13 +331,13 @@ router.post("/requestPasswordReset", (req,res)=>{
             
             //checando se o email foi verificado
             if(!data[0].verified){
-                res.json({
+                res.status(422).json({
                     status:"FAILED",
                     message: "O email não foi verificado ainda. Cheque sua caixa de email"
                 })
             }else{
                 //Enviando o email para resetar a senha
-                res.json({
+                res.status(200).json({
                     status:"PEDING",
                     message: "O email foi enviado. Cheque sua caixa de email."
                 })
@@ -345,7 +345,7 @@ router.post("/requestPasswordReset", (req,res)=>{
             }
 
         }else{
-            res.json({
+            res.status(422).json({
                 status:"FAILED",
                 message: "Nenhum email encontrado"
             })
@@ -354,7 +354,7 @@ router.post("/requestPasswordReset", (req,res)=>{
     })
     .catch(error => {
         console.log(error);
-        res.json({
+        res.status(502).json({
             status:"FAILED",
             message: "Um erro ocorreu ao checar se o usuário existe"
         })
@@ -381,13 +381,13 @@ router.post("/resetPassword",(req,res)=>{
                  .deleteOne({userId})
                  .then(()=>{
                     // Request de reset deletado
-                    res.json({
+                    res.status(422).json({
                         status:"FAILED",
                         message: "Link do reset está expirado"
                     })
                  })
                  .catch(error => {
-                    res.json({
+                    res.status(502).json({
                         status:"FAILED",
                         message: "Erro ao deletar o request"
                     })
@@ -413,13 +413,13 @@ router.post("/resetPassword",(req,res)=>{
                                 PasswordReset.deleteOne({userId})
                                 .then(()=>{
                                     //Tanto o reset quanto o exclusão realizada com sucesso
-                                    res.json({
+                                    res.status(200).json({
                                         status:"SUCCESS",
                                         message: "A senha foi atualizada com sucesso."
                                     })
                                 })
                                 .catch(error=>{
-                                    res.json({
+                                    res.status(502).json({
                                         status:"FAILED",
                                         message: "Ocorreu um erro ao finalizar o reset da senha."
                                     })
@@ -427,14 +427,14 @@ router.post("/resetPassword",(req,res)=>{
                             })
                             .catch(error =>{
                                 console.log(error);
-                                res.json({
+                                res.status(502).json({
                                     status:"FAILED",
                                     message: "Ocorreu um erro ao salvar a nova senha do usuário"
                                 })
                             })
                         })
                         .catch(error => {
-                            res.json({
+                            res.status(502).json({
                                 status:"FAILED",
                                 message: "Ocorreu um erro ao aplicar o hash na nova senha"
                             })
@@ -443,7 +443,7 @@ router.post("/resetPassword",(req,res)=>{
                     }else{
                         //A string passada está incorreta
                         //console.log(result)
-                        res.json({
+                        res.status(502).json({
                             status:"FAILED",
                             message: "Request de reset foi passado incorretamente"
                         })
@@ -451,7 +451,7 @@ router.post("/resetPassword",(req,res)=>{
                 })
                 .catch(error => {
                     console.log(error);
-                    res.json({
+                    res.status(502).json({
                         status:"FAILED",
                         message: "Erro ao comparar as strings"
                     })
@@ -460,7 +460,7 @@ router.post("/resetPassword",(req,res)=>{
 
         }else{
             //Request do reset não existe
-            res.json({
+            res.status(422).json({
                 status:"FAILED",
                 message: "Request de reset não encontrado"
             })
@@ -468,7 +468,7 @@ router.post("/resetPassword",(req,res)=>{
      })
      .catch(error => {
         console.log(error)
-        res.json({
+        res.status(502).json({
             status:"FAILED",
             message: "Um erro ocorreu ao procurar o request de reset de senha"
         })
