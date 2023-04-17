@@ -30,10 +30,10 @@ const createUserToken = async(user,req,res)=>{
     }else{// se estiver, libera a autenticação
         res.status(200).json({
             status: "SUCCESS",
-            message: "Você está autenticado!",
+            message: "Usuário autenticado com sucesso",
             token: token,
-            userId: user._id,
-          })
+            userId: user._id
+        })
     }
 
 

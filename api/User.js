@@ -480,23 +480,22 @@ router.post("/resetPassword",(req,res)=>{
 //Checando usuário pelo token
 router.get("/checkUser",async(req,res)=>{
     
-    let currentUser;
+    let currentUser
 
-
-    if(req.headers.authorization){// checando se existe autenticação
-        const token = getToken(req)
+    if(req.headers.authorization){  
+        const token = getToken(req)// pegando o token pela função do helper
         const decoded = jwt.verify(token, 'nossosecret')
 
-/*         
+        currentUser = await User.findById(decoded.id) // pegando o usuário atual pelo id obtido no toke
 
-        currentUser = await User.findById(decoded.id)
+        currentUser.password = undefined // retornar tudo do usuário menos sua senha 
 
-        currentUser.password = undefined  */   
-    }else{
-        currentUser = null;
+    }else{  
+        currentUser = null // se não for enviado token definir como nulo
     }
 
-    res.status(200).send(currentUser);
+    res.status(200).send(currentUser)
+
 })
 
 //Mandando email de reset da senha
